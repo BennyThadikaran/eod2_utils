@@ -1,5 +1,3 @@
-#! /home/benny/Documents/python/eod2/bin/python3.12
-
 import json
 import logging
 import sqlite3
