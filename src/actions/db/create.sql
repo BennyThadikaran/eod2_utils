@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS Stock (
+  id INTEGER PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Actions (
+  stock_id INTEGER,
+  subject TEXT,
+  exDate INTEGER,
+  FOREIGN KEY (stock_id) REFERENCES Stock(id)
+);
