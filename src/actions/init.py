@@ -99,7 +99,7 @@ tz_IN = ZoneInfo("Asia/Kolkata")
 
 isin = pd.read_csv(ISIN_FILE, index_col="ISIN")
 
-con = sqlite3.connect(DIR / "main.db")
+con = sqlite3.connect(DIR / "db/main.db")
 con.row_factory = sqlite3.Row
 
 logger = configure_logger("init.py")
