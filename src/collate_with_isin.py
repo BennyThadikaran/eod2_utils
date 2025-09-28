@@ -43,7 +43,9 @@ if not any(DAILY_NO_ISIN.iterdir()):
 shutil.copytree(DAILY_NO_ISIN, DAILY, dirs_exist_ok=False)
 
 
-headerText = b"Date,Open,High,Low,Close,Volume,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
+headerText = (
+    b"Date,Open,High,Low,Close,Volume,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
+)
 
 # EDIT BELOW - which ever date you start, one day prior
 dt = config["collate"]["with_isin"]["start_date"]
@@ -119,20 +121,22 @@ while dt <= end_date:
         txt = b""
 
         if dup is not None and idx in dup.index:
-            O, H, L, C, V = dup.loc[idx, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY"]]
+            O, H, L, C, V, series = dup.loc[
+                idx, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "SERIES"]
+            ]
         else:
-            O, H, L, C, V = df.loc[idx, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY"]]
+            O, H, L, C, V, series = df.loc[
+                idx, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "SERIES"]
+            ]
 
         if dlv_df is not None:
             if sym in dlv_df.index:
-                series, trdCnt, dq = dlv_df.loc[
-                    sym, [" SERIES", " NO_OF_TRADES", " DELIV_QTY"]
-                ]
+                trdCnt, dq = dlv_df.loc[sym, [" NO_OF_TRADES", " DELIV_QTY"]]
 
                 # BE and BZ series stocks are all delivery trades,
                 # so we use the volume
                 try:
-                    dq = V if series in (" BE", " BZ") else int(dq)
+                    dq = V if series in ("BE", "BZ") else int(dq)
                 except ValueError:
                     dq = np.nan
             else:
@@ -151,7 +155,7 @@ while dt <= end_date:
                 txt += headerText
 
         txt += bytes(
-            f"{pandas_dt},{O},{H},{L},{C},{V},{trdCnt},{avgTrdCnt},{dq}\n",
+            f"{pandas_dt},{O},{H},{L},{C},{V},{series},{trdCnt},{avgTrdCnt},{dq}\n",
             encoding="utf-8",
         )
 

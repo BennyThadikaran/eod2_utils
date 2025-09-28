@@ -35,7 +35,9 @@ if not any(DAILY_WITH_ISIN.iterdir()):
 shutil.copytree(DAILY_WITH_ISIN, DAILY, dirs_exist_ok=False)
 
 
-headerText = b"Date,Open,High,Low,Close,Volume,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
+headerText = (
+    b"Date,Open,High,Low,Close,Volume,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
+)
 
 dt = config["collate"]["udiff"]["start_date"]
 
@@ -105,14 +107,12 @@ while dt <= today:
 
         if dlv_df is not None:
             if sym in dlv_df.index:
-                series, trdCnt, dq = dlv_df.loc[
-                    sym, [" SERIES", " NO_OF_TRADES", " DELIV_QTY"]
-                ]
+                trdCnt, dq = dlv_df.loc[sym, [" NO_OF_TRADES", " DELIV_QTY"]]
 
                 # BE and BZ series stocks are all delivery trades,
                 # so we use the volume
                 try:
-                    dq = V if series in (" BE", " BZ") else int(dq)
+                    dq = V if series in ("BE", "BZ") else int(dq)
                 except ValueError:
                     dq = np.nan
 
@@ -132,7 +132,7 @@ while dt <= today:
                 txt += headerText
 
         txt += bytes(
-            f"{pandas_dt},{O},{H},{L},{C},{V},{trdCnt},{avgTrdCnt},{dq}\n",
+            f"{pandas_dt},{O},{H},{L},{C},{V},{series},{trdCnt},{avgTrdCnt},{dq}\n",
             encoding="utf-8",
         )
 

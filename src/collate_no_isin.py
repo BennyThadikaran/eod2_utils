@@ -21,7 +21,9 @@ if DAILY.exists():
 
 DAILY.mkdir(parents=True)
 
-headerText = b"Date,Open,High,Low,Close,Volume,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
+headerText = (
+    b"Date,Open,High,Low,Close,Volume,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
+)
 
 dt = config["collate"]["no_isin"]["start_date"]
 end_date = config["collate"]["no_isin"]["end_date"]
@@ -64,12 +66,12 @@ while dt <= end_date:
                 prefix = "_sme"
 
         if dup is not None and symbol in dup.index:
-            O, H, L, C, V = dup.loc[
-                symbol, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY"]
+            O, H, L, C, V, series = dup.loc[
+                symbol, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "SERIES"]
             ]
         else:
-            O, H, L, C, V = df.loc[
-                symbol, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY"]
+            O, H, L, C, V, series = df.loc[
+                symbol, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "SERIES"]
             ]
 
         sym_file = DAILY / f"{symbol.lower()}{prefix}.csv"
@@ -79,7 +81,7 @@ while dt <= end_date:
         if not sym_file.exists():
             txt += headerText
 
-        txt += bytes(f"{pandas_dt},{O},{H},{L},{C},{V},,,\n", encoding="utf-8")
+        txt += bytes(f"{pandas_dt},{O},{H},{L},{C},{V},{series},,,\n", encoding="utf-8")
 
         with sym_file.open("ab") as f:
             f.write(txt)
