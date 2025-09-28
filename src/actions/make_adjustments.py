@@ -106,8 +106,11 @@ for sym in syms:
         dt = datetime.fromtimestamp(act["exDate"])
         bonus = split = None
 
-        if "split" in subject or "splt" in subject:
-            i = subject.index("spl")
+        if "split" in subject or "splt" in subject or "consolidation" in subject:
+            if "consolidation" in subject:
+                i = subject.index("consolidation")
+            else:
+                i = subject.index("spl")
 
             split = getSplit(sym["name"], subject[i:], dt)
 
