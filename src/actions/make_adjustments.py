@@ -57,18 +57,15 @@ def makeAdjustment(df, sym: str, dt, adjustmentFactor):
     if dt < start or dt > end:
         return df
 
-    if dt not in df.index:
-        curDt = dt
-        while curDt not in df.index:
-            curDt = curDt + timedelta(1)
+    if dt in df.index:
+        idx = df.index.get_loc(dt)
+        last = df.iloc[idx:]
+        df = df.iloc[:idx].copy()
+    else:
+        last = df.loc[dt:]
 
-        dt = curDt
-
-    idx = df.index.get_loc(dt)
-
-    last = df.iloc[idx:]
-
-    df = df.iloc[:idx].copy()
+        df = df.loc[:dt].copy()
+        idx = df.index.get_loc(df.index[-1])
 
     for col in ("Open", "High", "Low", "Close"):
         # nearest 0.05 = round(nu / 0.05) * 0.05
