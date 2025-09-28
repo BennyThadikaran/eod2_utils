@@ -1,5 +1,6 @@
 import json
 import logging
+import hashlib
 import sqlite3
 from datetime import datetime, timedelta
 from itertools import chain
@@ -10,6 +11,11 @@ import httpx
 import pandas as pd
 import tzlocal
 from nse import NSE
+
+
+def get_hash(symbol, subject, ex_date, rec_date) -> str:
+    string = f"{symbol}-{subject}-{ex_date}-{rec_date}"
+    return hashlib.sha256(string.encode("utf-8")).hexdigest()
 
 
 def get_index_by_value(series, value):
@@ -154,7 +160,7 @@ while True:
         logger.info(f"{len(new_symbols)} symbols added to Db.")
 
         con.executemany(
-            "INSERT INTO Stock (name) VALUES (:name)",
+            "INSERT INTO Stocks (name) VALUES (:name)",
             new_symbols,
         )
 
@@ -163,7 +169,7 @@ while True:
     if update_symbols:
         logger.info(f"{len(update_symbols)} symbol names updated.")
 
-        con.executemany("UPDATE Stock SET name=:name WHERE name=:name", update_symbols)
+        con.executemany("UPDATE Stocks SET name=:name WHERE name=:name", update_symbols)
 
         update_symbols.clear()
 
@@ -193,19 +199,35 @@ while True:
         if series not in ("EQ", "BE", "BZ", "SM", "ST"):
             continue
 
-        res = con.execute(f"SELECT id from Stock WHERE name='{sym}'").fetchone()
+        res = con.execute(f"SELECT id from Stocks WHERE name='{sym}'").fetchone()
 
         if res is None:
-            cur = con.execute("INSERT INTO Stock (name) VALUES (:sym)", dict(sym=sym))
+            cur = con.execute("INSERT INTO Stocks (name) VALUES (:sym)", dict(sym=sym))
             res = dict(id=cur.lastrowid)
 
         sub = act["subject"].strip()
-        ex_date = datetime.strptime(act["exDate"], "%d-%b-%Y").timestamp()
 
-        con.execute(
-            f"INSERT INTO Actions (stock_id, subject, exDate) VALUES (:id, :sub, :dt)",
-            dict(id=res["id"], sub=sub, dt=ex_date),
-        )
+        if act["exDate"] == "-":
+            ex_date = None
+        else:
+            ex_date = datetime.strptime(act["exDate"], "%d-%b-%Y").timestamp()
+
+        if act["recDate"] == "-":
+            rec_date = None
+        else:
+            rec_date = datetime.strptime(act["recDate"], "%d-%b-%Y").timestamp()
+
+        hash = get_hash(sym, sub, ex_date, rec_date)
+
+        try:
+            cur = con.execute(
+                f"INSERT INTO Actions (stock_id, hash, subject, exDate, recDate) VALUES (:id, :hash, :sub, :ex_date, :rec_date)",
+                dict(
+                    id=res["id"], hash=hash, sub=sub, ex_date=ex_date, rec_date=rec_date
+                ),
+            )
+        except sqlite3.IntegrityError as e:
+            continue
 
     meta["last_update"] = dates.dt.isoformat()
     META_FILE.write_text(json.dumps(meta))
