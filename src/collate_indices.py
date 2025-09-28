@@ -112,23 +112,25 @@ while dt < end_date:
                 "Low Index Value",
                 "Closing Index Value",
                 "Volume",
+                "P/E",
             ],
         ]
 
         if len(ser.shape) > 1:
             ser = ser.iloc[0]
 
-        O, H, L, C, V = ser
+        O, H, L, C, V, pe = ser
 
-        if pd.isna(V):
-            V = 0
+        if V == "-":
+            V = ""
+
+        if pe == "-":
+            pe = ""
 
         if not file.exists():
-            text += (
-                b"Date,Open,High,Low,Close,Volume,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
-            )
+            text += b"Date,Open,High,Low,Close,Volume,P/E,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
 
-        text += bytes(f"{pandas_dt},{O},{H},{L},{C},{V},,,\n", encoding="utf-8")
+        text += bytes(f"{pandas_dt},{O},{H},{L},{C},{V},{pe},,,,\n", encoding="utf-8")
 
         with file.open("ab") as f:
             f.write(text)
