@@ -83,7 +83,7 @@ def getDf(file):
 con = sqlite3.connect(DIR / "db/main.db")
 con.row_factory = sqlite3.Row
 
-syms = con.execute("SELECT id, name from Stock").fetchall()
+syms = con.execute("SELECT id, name from Stocks").fetchall()
 
 for sym in syms:
     file = DAILY / f"{sym['name'].lower()}.csv"
