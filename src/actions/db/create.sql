@@ -1,11 +1,14 @@
-CREATE TABLE IF NOT EXISTS Stock (
+CREATE TABLE IF NOT EXISTS Stocks (
   id INTEGER PRIMARY KEY,
   name TEXT UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Actions (
   stock_id INTEGER,
+  hash TEXT UNIQUE,
   subject TEXT,
   exDate INTEGER,
-  FOREIGN KEY (stock_id) REFERENCES Stock(id)
+  recDate INTEGER,
+  fetched_at INTEGER CURRENT_TIMESTAMP,
+  FOREIGN KEY (stock_id) REFERENCES Stocks(id)
 );
