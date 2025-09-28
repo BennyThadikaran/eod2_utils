@@ -1,6 +1,6 @@
 import re
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import tomllib
 
@@ -103,6 +103,11 @@ for sym in syms:
 
     for act in actions:
         subject = act["subject"].lower()
+
+        if act["exDate"] is None:
+            print(sym["name"], subject, "ex date is None")
+            continue
+
         dt = datetime.fromtimestamp(act["exDate"])
         bonus = split = None
 
