@@ -54,8 +54,7 @@ def makeAdjustment(df, sym: str, dt, adjustmentFactor):
     start = df.index[0]
     end = df.index[-1]
 
-    if start > dt > end:
-        print(f"{sym} Out of bounds")
+    if dt < start or dt > end:
         return df
 
     if dt not in df.index:
