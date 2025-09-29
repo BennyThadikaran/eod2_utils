@@ -11,6 +11,11 @@ indices_folder = "~/Documents/python/eod2_utils/src/NSE-reports/nseIndices/"
 # Output folder
 output_folder = "~/Documents/python/eod2_utils/src/data"
 
+# Corporate actions folder in JSON format (downloaded from NSE)
+actions_folder = "~/Documents/python/eod2_utils/src/actions_json"
+
+actions_db = "~/Documents/python/eod2_utils/src/actions/db/main.db"
+
 # Avoid changing dates in collate
 # Udiff format started from 2024-07-08
 
