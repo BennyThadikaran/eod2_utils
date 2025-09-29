@@ -68,6 +68,24 @@ There are only 2 tables in the database: Stock and Actions. Refer to `src/action
 
 To sync all corporate actions upto current date, run `actions/init.py`. It can be run automated as a cronjob daily.
 
+## Populating Actions database from scratch
+
+This is an optional step, only required, if the actions database need to be recreated due to errors or missing actions.
+
+For most cases, run `actions/init.py` to sync the actions database to latest date.
+
+It is preferred to run this on a weekend during midnight hours.
+
+Steps 1 to 8 in the compile process must to be completed to proceed.
+
+1. Delete existing `db/main.db`. Run `sqlite3 main.db < create.sql` in `actions/db` folder to generate SQLITE database.
+
+2. Run `download_actions.py` to download corporate actions as json files.
+
+3. Run `actions/to_sqlite.py` to move JSON data into Sqlite database.
+
+4. Update the `actions/meta.json` with the last updated date.
+
 ## TODO
 
 - Add other scripts for EOD2 maintainence.
