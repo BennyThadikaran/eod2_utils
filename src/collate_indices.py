@@ -2,6 +2,7 @@ import shutil
 from datetime import date, timedelta
 from pathlib import Path
 import tomllib
+import json
 
 import pandas as pd
 
@@ -13,15 +14,23 @@ with config_file.open("rb") as f:
     config = tomllib.load(f)
 
 FOLDER = Path(config["general"]["indices_folder"]).expanduser()
+meta_file = output_folder / "meta-collate.json"
 
 OUT_FOLDER = Path(f"{config['general']['output_folder']}/indices").expanduser()
+if meta_file.exists():
+    meta = json.loads(meta_file.read_bytes())
+else:
+    meta = {}
 
-if OUT_FOLDER.exists():
-    shutil.rmtree(OUT_FOLDER)
+if "last_update_indices" not in meta:
+    if index_out_folder.exists():
+        shutil.rmtree(index_out_folder)
 
-OUT_FOLDER.mkdir(parents=True)
+    index_out_folder.mkdir(parents=True)
 
-dt = config["collate"]["indices"]["start_date"]
+    dt = config["collate"]["indices"]["start_date"]
+else:
+    dt = date.fromisoformat(meta["last_update_indices"])
 
 end_date = date.today()
 
@@ -134,3 +143,7 @@ while dt < end_date:
 
         with file.open("ab") as f:
             f.write(text)
+
+    meta["last_update_indices"] = pandas_dt
+
+meta_file.write_text(json.dumps(meta, indent=2))
