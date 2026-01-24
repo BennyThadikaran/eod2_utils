@@ -104,7 +104,12 @@ class Actions:
                 continue
 
             if sym in self.etf_lst:
-                actions = self.nse.actions(segment="mf", symbol=sym)
+                actions = self.nse.actions(
+                    segment="mf",
+                    symbol=sym,
+                    from_date=from_date,
+                    to_date=to_date,
+                )
 
                 sleep(0.5)
 
@@ -112,37 +117,35 @@ class Actions:
                     save_actions(actions, file)
                 self.last = sym
             else:
-                if series == "SM":
-                    actions = self.nse.actions(segment="sme", symbol=sym)
+                sme_actions = self.nse.actions(
+                    segment="sme",
+                    symbol=sym,
+                    from_date=from_date,
+                    to_date=to_date,
+                )
+
+                if isinstance(sme_actions, dict):
+                    sme_actions = sme_actions["data"]
+
+                sleep(0.5)
+
+                if series == "EQ":
+                    eq_actions = self.nse.actions(
+                        segment="equities",
+                        symbol=sym,
+                        from_date=from_date,
+                        to_date=to_date,
+                    )
                     sleep(0.5)
-
-                    if isinstance(actions, dict):
-                        actions = actions["data"]
-
-                    if actions:
-                        save_actions(actions, file)
-
-                    self.last = sym
-
-                else:
-                    sme_actions = self.nse.actions(segment="sme", symbol=sym)
-                    sleep(0.5)
-
-                    eq_actions = self.nse.actions(segment="equities", symbol=sym)
-                    sleep(0.5)
-
-                    if isinstance(sme_actions, dict):
-                        sme_actions = sme_actions["data"]
 
                     if isinstance(eq_actions, dict):
                         eq_actions = eq_actions["data"]
 
                     sme_actions.extend(eq_actions)
 
-                    if sme_actions:
-                        save_actions(sme_actions, file)
-
-                    self.last = sym
+                if sme_actions:
+                    save_actions(sme_actions, file)
+                self.last = sym
 
 
 if __name__ == "__main__":
