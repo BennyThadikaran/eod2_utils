@@ -1,4 +1,5 @@
 import shutil
+import json
 from datetime import date, timedelta
 from pathlib import Path
 import tomllib
@@ -20,32 +21,41 @@ output_folder = Path(config["general"]["output_folder"]).expanduser()
 basePath = Path(config["general"]["bhav_folder"]).expanduser()
 DAILY = output_folder / "daily-with-udiff"
 DELIVERY = Path(config["general"]["delivery_folder"]).expanduser()
+meta_file = output_folder / "meta-collate.json"
 
 if DAILY.exists():
     shutil.rmtree(DAILY)
+if meta_file.exists():
+    meta = json.loads(meta_file.read_bytes())
+else:
+    meta = {}
 
-DAILY_WITH_ISIN = output_folder / "daily-with-isin"
+if "last_update_udiff" not in meta:
+    DAILY_WITH_ISIN = output_folder / "daily-with-isin"
 
-if not DAILY_WITH_ISIN.exists():
-    raise RuntimeError(f"Missing {DAILY_WITH_ISIN.name} folder.")
+    if not DAILY_WITH_ISIN.exists():
+        raise RuntimeError(f"Missing {DAILY_WITH_ISIN.name} folder.")
 
-if not any(DAILY_WITH_ISIN.iterdir()):
-    raise RuntimeError(f"{DAILY_WITH_ISIN.name} folder is empty.")
+    if not any(DAILY_WITH_ISIN.iterdir()):
+        raise RuntimeError(f"{DAILY_WITH_ISIN.name} folder is empty.")
 
-shutil.copytree(DAILY_WITH_ISIN, DAILY, dirs_exist_ok=False)
+    shutil.copytree(DAILY_WITH_ISIN, daily_folder, dirs_exist_ok=False)
+    isin = pd.read_csv(DAILY_WITH_ISIN / "isin.csv", index_col="ISIN")
 
+    if daily_folder.exists():
+        shutil.rmtree(daily_folder)
 
+    dt = config["collate"]["udiff"]["start_date"]
+else:
+    isin = pd.read_csv(daily_folder / "isin.csv", index_col="ISIN")
+    dt = date.fromisoformat(meta["last_update_udiff"])
+
+print("isin", isin.shape)
 headerText = (
     b"Date,Open,High,Low,Close,Volume,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
 )
 
-dt = config["collate"]["udiff"]["start_date"]
-
 today = date.today()
-
-isin = pd.read_csv(DAILY_WITH_ISIN / "isin.csv", index_col="ISIN")
-
-print("isin", isin.shape)
 
 while dt <= today:
     dt = dt + timedelta(1)
@@ -138,6 +148,8 @@ while dt <= today:
 
         with sym_file.open("ab") as f:
             f.write(txt)
+        meta["last_update_udiff"] = pandas_dt
 
 print("isin", isin.shape)
 isin.to_csv(DAILY / "isin.csv")
+meta_file.write_text(json.dumps(meta, indent=2))
