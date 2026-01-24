@@ -69,7 +69,7 @@ def makeAdjustment(df, sym: str, dt, adjustmentFactor):
 
     for col in ("Open", "High", "Low", "Close"):
         # nearest 0.05 = round(nu / 0.05) * 0.05
-        df[col] = ((df[col] / adjustmentFactor / 0.05).round() * 0.05).round(2)
+        df.loc[:, col] = ((df[col] / adjustmentFactor / 0.05).round() * 0.05).round(2)
 
     lastidx["idx"] = idx
 

@@ -25,7 +25,7 @@ for file in daily.iterdir():
 
     df = pd.read_csv(file, parse_dates=["Date"])
 
-    df["days"] = (df["Date"] - df["Date"].shift()).dt.days
+    df.loc[:, "days"] = (df["Date"] - df["Date"].shift()).dt.days
 
     if df["days"].max() > 365:
         dt = max(list(df[df["days"] > 365]["Date"]))
