@@ -11,20 +11,20 @@ import pandas as pd
 Updated 8th July 2024 for using udiff format
 """
 
-DIR = Path(__file__).parent
-config_file = DIR / "config.toml"
+dir = Path(__file__).parent
+config_file = dir / "config.toml"
+
 
 with config_file.open("rb") as f:
     config = tomllib.load(f)
 
 output_folder = Path(config["general"]["output_folder"]).expanduser()
-basePath = Path(config["general"]["bhav_folder"]).expanduser()
-DAILY = output_folder / "daily-with-udiff"
-DELIVERY = Path(config["general"]["delivery_folder"]).expanduser()
+report_folder = Path(config["general"]["bhav_folder"]).expanduser()
+daily_folder = output_folder / "daily-with-udiff"
+delivery_folder = Path(config["general"]["delivery_folder"]).expanduser()
+
 meta_file = output_folder / "meta-collate.json"
 
-if DAILY.exists():
-    shutil.rmtree(DAILY)
 if meta_file.exists():
     meta = json.loads(meta_file.read_bytes())
 else:
@@ -62,7 +62,7 @@ while dt <= today:
 
     dt_str = dt.strftime("%Y%m%d")
 
-    bhav_file = basePath / f"{dt.year}/BhavCopy_NSE_CM_0_0_0_{dt_str}_F_0000.csv"
+    bhav_file = report_folder / f"{dt.year}/BhavCopy_NSE_CM_0_0_0_{dt_str}_F_0000.csv"
 
     if not bhav_file.exists():
         continue
@@ -73,7 +73,7 @@ while dt <= today:
 
     dlv_df = None
 
-    dlv_file = DELIVERY / f"{dt.year}/sec_bhavdata_full_{dt:%d%m%Y}.csv"
+    dlv_file = delivery_folder / f"{dt.year}/sec_bhavdata_full_{dt:%d%m%Y}.csv"
 
     if dlv_file.exists():
         dlv_df = pd.read_csv(dlv_file, index_col="SYMBOL")
@@ -96,15 +96,15 @@ while dt <= today:
             if series == "SM" or series == "ST":
                 prefix = "_sme"
 
-        sym_file = DAILY / f"{sym.lower()}{prefix}.csv"
+        sym_file = daily_folder / f"{sym.lower()}{prefix}.csv"
 
         if idx not in isin.index:
             isin.at[idx, "SYMBOL"] = sym
         elif sym != isin.at[idx, "SYMBOL"]:
             old = isin.at[idx, "SYMBOL"]
             isin.at[idx, "SYMBOL"] = sym
-            old_file = DAILY / f"{old.lower()}{prefix}.csv"
-            new_file = DAILY / f"{sym.lower()}{prefix}.csv"
+            old_file = daily_folder / f"{old.lower()}{prefix}.csv"
+            new_file = daily_folder / f"{sym.lower()}{prefix}.csv"
             sym_file = old_file.rename(new_file)
 
             print(old, sym, dt)
@@ -134,7 +134,7 @@ while dt <= today:
             trdCnt = dq = avgTrdCnt = ""
 
         if not sym_file.exists():
-            sme_file = DAILY / f"{sym.lower()}_sme.csv"
+            sme_file = daily_folder / f"{sym.lower()}_sme.csv"
 
             if prefix == "" and sme_file.exists():
                 sme_file.rename(sym_file)
@@ -151,5 +151,5 @@ while dt <= today:
         meta["last_update_udiff"] = pandas_dt
 
 print("isin", isin.shape)
-isin.to_csv(DAILY / "isin.csv")
+isin.to_csv(daily_folder / "isin.csv")
 meta_file.write_text(json.dumps(meta, indent=2))

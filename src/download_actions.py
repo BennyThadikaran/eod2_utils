@@ -4,23 +4,25 @@ import json
 from nse import NSE
 from pathlib import Path
 import tomllib
+from datetime import datetime
 
 
 def save_actions(data, file: Path):
     file.write_text(json.dumps(data, indent=2))
 
 
-DIR = Path(__file__).parent
+dir = Path(__file__).parent
 
-config_file = DIR / "config.toml"
+config_file = dir / "config.toml"
 
 with config_file.open("rb") as f:
     config = tomllib.load(f)
 
-etf_file = DIR / "etf.json"
-output_folder = Path(config["general"]["actions_folder"])
-meta_file = DIR / "actions_meta.json"
-DAILY = Path(config["general"]["output_folder"]) / "daily-with-udiff"
+etf_file = dir / "etf.json"
+output_folder = Path(config["general"]["actions_folder"]).expanduser().resolve()
+actions_folder = Path(config["general"]["actions_folder"]).expanduser().resolve()
+meta_file = dir / "actions_meta.json"
+daily_folder = output_folder / "daily-with-udiff"
 
 
 class Actions:
@@ -48,8 +50,8 @@ class Actions:
 
         self.last = None
 
-        if not output_folder.exists():
-            output_folder.mkdir(parents=True)
+        if not actions_folder.exists():
+            actions_folder.mkdir(parents=True)
 
         self.nse = NSE(download_folder="", server=True)
 
@@ -84,7 +86,10 @@ class Actions:
         meta_file.unlink(missing_ok=True)
 
     def run(self):
-        for file in DAILY.iterdir():
+        from_date = datetime(1995, 1, 1)
+        to_date = datetime.now()
+
+        for file in daily_folder.iterdir():
             if "_sme" in file.name:
                 sym = file.name[:-8].upper()
                 series = "SM"
@@ -98,7 +103,7 @@ class Actions:
 
                 self.last_updated = None
 
-            file = output_folder / f"{sym}.json"
+            file = actions_folder / f"{sym}.json"
 
             if file.exists():
                 continue

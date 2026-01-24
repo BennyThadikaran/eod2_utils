@@ -6,8 +6,8 @@ import tomllib
 
 import pandas as pd
 
-DIR = Path(__file__).parent
-config_file = DIR.parent / "config.toml"
+dir = Path(__file__).parent
+config_file = dir.parent / "config.toml"
 
 with config_file.open("rb") as f:
     config = tomllib.load(f)
@@ -80,7 +80,7 @@ def getDf(file):
     return pd.read_csv(file, index_col="Date", parse_dates=["Date"])
 
 
-con = sqlite3.connect(DIR / "db/main.db")
+con = sqlite3.connect(dir / "db/main.db")
 con.row_factory = sqlite3.Row
 
 syms = con.execute("SELECT id, name from Stocks").fetchall()
@@ -128,7 +128,7 @@ for sym in syms:
 
             df = makeAdjustment(df, sym["name"], dt, split)
 
-            # print(f"{sym['name']} - {subject} {dt}")
+            print(f"{sym['name']} - {subject} {dt} {split}")
 
         if "bonus" in subject:
             if (
@@ -150,7 +150,7 @@ for sym in syms:
 
             df = makeAdjustment(df, sym["name"], dt, bonus)
 
-            # print(f'{sym['name']} - {act["subject"]} {dt}')
+            print(f"{sym['name']} - {act['subject']} {dt} {bonus}")
 
         # applies to some corporate actions prior to 2011
         if "spl" in subject and split is None:
@@ -167,6 +167,8 @@ for sym in syms:
                 df = getDf(file)
 
             df = makeAdjustment(df, sym["name"], dt, split)
+
+            print(f"{sym['name']} - {subject} {dt} {split}")
 
         # applies to some corporate actions prior to 2011
         if "bon" in subject and bonus is None:

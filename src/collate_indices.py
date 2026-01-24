@@ -6,17 +6,20 @@ import json
 
 import pandas as pd
 
-DIR = Path(__file__).parent
+dir = Path(__file__).parent
 
-config_file = DIR / "config.toml"
+config_file = dir / "config.toml"
+
 
 with config_file.open("rb") as f:
     config = tomllib.load(f)
 
-FOLDER = Path(config["general"]["indices_folder"]).expanduser()
+report_folder = Path(config["general"]["indices_folder"]).expanduser()
+
+output_folder = Path(config["general"]["output_folder"]).expanduser()
+index_out_folder = output_folder / "indices"
 meta_file = output_folder / "meta-collate.json"
 
-OUT_FOLDER = Path(f"{config['general']['output_folder']}/indices").expanduser()
 if meta_file.exists():
     meta = json.loads(meta_file.read_bytes())
 else:
@@ -85,7 +88,7 @@ while dt < end_date:
 
     print(dt.strftime("%b-%Y"), flush=True, end="\r" * 11)
 
-    indices_file = FOLDER / f"{dt.year}/ind_close_all_{dt:%d%m%Y}.csv"
+    indices_file = report_folder / f"{dt.year}/ind_close_all_{dt:%d%m%Y}.csv"
 
     if not indices_file.exists():
         continue
@@ -109,7 +112,7 @@ while dt < end_date:
         if "/" in fname or ":" in fname:
             fname = fname.replace("/", "-").replace(":", "-")
 
-        file = OUT_FOLDER / fname
+        file = index_out_folder / fname
 
         text = b""
 

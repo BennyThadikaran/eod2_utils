@@ -4,24 +4,27 @@ from pathlib import Path
 
 import pandas as pd
 
-DIR = Path(__file__).parent
+dir = Path(__file__).parent
 
-config_file = DIR / "config.toml"
+config_file = dir / "config.toml"
 
 with config_file.open("rb") as f:
     config = tomllib.load(f)
 
-DAILY = Path(f"{config['general']['output_folder']}/daily-with-udiff").expanduser()
-isin_file = DAILY / "isin.csv"
+daily_folder = Path(
+    f"{config['general']['output_folder']}/daily-with-udiff"
+).expanduser()
+
+isin_file = daily_folder / "isin.csv"
 
 if isin_file.exists():
-    isin_file.replace(DAILY.parent / "isin.csv")
+    isin_file.replace(daily_folder.parent / "isin.csv")
 
 dt = date.today() - timedelta(365)
 dups = 0
 count = 0
 
-for file in DAILY.iterdir():
+for file in daily_folder.iterdir():
     try:
         df = pd.read_csv(file, index_col="Date", parse_dates=["Date"])
     except Exception as e:
