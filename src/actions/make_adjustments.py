@@ -49,7 +49,7 @@ def getBonus(sym: str, string, dt):
     return 1 + int(match.group(1)) / int(match.group(2))
 
 
-def makeAdjustment(df, sym: str, dt, adjustmentFactor):
+def makeAdjustment(df, dt, adjustmentFactor):
     lastidx["idx"] = None
     start = df.index[0]
     end = df.index[-1]
@@ -126,7 +126,7 @@ for sym in syms:
             if df is None:
                 df = getDf(file)
 
-            df = makeAdjustment(df, sym["name"], dt, split)
+            df = makeAdjustment(df, dt, split)
 
             print(f"{sym['name']} - {subject} {dt} {split}")
 
@@ -148,7 +148,7 @@ for sym in syms:
             if df is None:
                 df = getDf(file)
 
-            df = makeAdjustment(df, sym["name"], dt, bonus)
+            df = makeAdjustment(df, dt, bonus)
 
             print(f"{sym['name']} - {act['subject']} {dt} {bonus}")
 
@@ -162,11 +162,12 @@ for sym in syms:
 
             if split is None:
                 print(f"Error: SPLIT - {dt:%d-%b-%Y} - {sym['name']:<15} - {subject}")
+                continue
 
             if df is None:
                 df = getDf(file)
 
-            df = makeAdjustment(df, sym["name"], dt, split)
+            df = makeAdjustment(df, dt, split)
 
             print(f"{sym['name']} - {subject} {dt} {split}")
 
@@ -184,11 +185,14 @@ for sym in syms:
 
             if bonus is None:
                 print(f"Error: BONUS - {dt:%d-%b-%Y} - {sym['name']:<15} - {subject}")
+                continue
 
             if df is None:
                 df = getDf(file)
 
-            df = makeAdjustment(df, sym["name"], dt, bonus)
+            df = makeAdjustment(df, dt, bonus)
+
+            print(f"{sym['name']} - {act['subject']} {dt} {bonus}")
 
         if (
             lastidx["idx"] is None
