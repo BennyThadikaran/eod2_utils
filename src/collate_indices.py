@@ -3,8 +3,21 @@ from datetime import date, timedelta
 from pathlib import Path
 import tomllib
 import json
+from typing import cast, Iterable, NamedTuple
+from collections import defaultdict
 
 import pandas as pd
+
+
+class Row(NamedTuple):
+    symbol: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    pe: float
+
 
 dir = Path(__file__).parent
 
@@ -37,15 +50,12 @@ else:
 
 end_date = date.today()
 
-old_dct = {
+dct = {
     "s&p cnx nifty": "nifty 50",
     "s&p cnx 500": "nifty 500",
     "s&p cnx nifty dividend": "nifty50 dividend points",
     "s&p cnx nifty shariah": "nifty50 shariah",
     "s&p cnx 500 shariah": "nifty500 shariah",
-}
-
-dct = {
     "cnx 100": "nifty 100",
     "cnx 100 equal weight": "nifty50 equal weight",
     "cnx 200": "nifty 200",
@@ -83,6 +93,8 @@ dct = {
     "nse quality 30": "nifty quality 30",
 }
 
+buffers = defaultdict(list)
+
 while dt < end_date:
     dt = dt + timedelta(1)
 
@@ -96,57 +108,55 @@ while dt < end_date:
     # start delivery sync
     pandas_dt = dt.strftime("%Y-%m-%d")
 
-    df = pd.read_csv(indices_file, index_col="Index Name")
+    df = pd.read_csv(indices_file)
     df = df.replace("-", "")
 
-    for sym in df.index:
-        sym_lower_case = sym.lower()
+    df.loc[:, "Index Name"] = (
+        df["Index Name"].str.lower().str.replace(r"[/:]", "-", regex=True)
+    )
 
-        if sym_lower_case in old_dct:
-            fname = f"{old_dct[sym_lower_case]}.csv"
-        elif sym_lower_case in dct:
-            fname = f"{dct[sym_lower_case]}.csv"
-        else:
-            fname = f"{sym_lower_case}.csv"
+    df.loc[:, "Index Name"] = df["Index Name"].map(lambda x: dct.get(x, x))
 
-        if "/" in fname or ":" in fname:
-            fname = fname.replace("/", "-").replace(":", "-")
-
-        file = index_out_folder / fname
-
-        text = b""
-
-        ser = df.loc[
-            sym,
-            [
-                "Open Index Value",
-                "High Index Value",
-                "Low Index Value",
-                "Closing Index Value",
-                "Volume",
-                "P/E",
-            ],
+    df = df[
+        [
+            "Index Name",
+            "Open Index Value",
+            "High Index Value",
+            "Low Index Value",
+            "Closing Index Value",
+            "Volume",
+            "P/E",
         ]
+    ]
 
-        if len(ser.shape) > 1:
-            ser = ser.iloc[0]
+    df = df[~df.duplicated(subset="Index Name")]
 
-        O, H, L, C, V, pe = ser
+    df.columns = ["symbol", "open", "high", "low", "close", "volume", "pe"]
 
-        if V == "-":
-            V = ""
+    rows = cast(Iterable[Row], df.itertuples())
 
-        if pe == "-":
-            pe = ""
+    for row in rows:
+        text = bytes(
+            f"{pandas_dt},{row.open},{row.high},{row.low},{row.close},{row.volume},{row.pe},,,,\n",
+            encoding="utf-8",
+        )
 
-        if not file.exists():
-            text += b"Date,Open,High,Low,Close,Volume,P/E,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
-
-        text += bytes(f"{pandas_dt},{O},{H},{L},{C},{V},{pe},,,,\n", encoding="utf-8")
-
-        with file.open("ab") as f:
-            f.write(text)
+        buffers[row.symbol].append(text)
 
     meta["last_update_indices"] = pandas_dt
 
+header_text = (
+    b"Date,Open,High,Low,Close,Volume,P/E,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
+)
+
+indices_set = set()
+
+for symbol, lines in buffers.items():
+    indices_set.add(symbol.lower())
+    file = index_out_folder / f"{symbol}.csv"
+
+    file.write_bytes(header_text + b"".join(lines))
+
+
+(output_folder / "index.json").write_text(json.dumps(list(indices_set), indent=2))
 meta_file.write_text(json.dumps(meta, indent=2))
