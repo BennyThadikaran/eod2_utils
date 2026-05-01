@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import pandas as pd
 
@@ -25,6 +26,10 @@ Your reporting helps make EOD2 rock solid and stable.
 ERROR_THRESHOLD = 5
 
 DIR = Path(__file__).parent
+
+index_json_file = DIR / "data/index.json"
+
+indexes = set(json.loads(index_json_file.read_bytes()))
 
 duplicatesList = []
 typeMismatchList = []
@@ -84,7 +89,7 @@ hasNansText = "{}: Column {} has NAN values"
 
 for file in daily.iterdir():
     # Only indices have spaces in file names - bit of a cheat
-    is_index_file = " " in file.name
+    is_index_file = file.stem in indexes
 
     try:
         df = pd.read_csv(file, index_col="Date", parse_dates=True)
