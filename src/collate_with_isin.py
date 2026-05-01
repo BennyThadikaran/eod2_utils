@@ -2,8 +2,11 @@ import shutil
 from datetime import timedelta
 from pathlib import Path
 import tomllib
+from symbol_tracker import SymbolTracker
+from typing import cast, Iterable, NamedTuple
+from collections import defaultdict
+from dataclasses import dataclass, field
 
-import numpy as np
 import pandas as pd
 
 """
@@ -11,6 +14,26 @@ Updated 8th July 2024
 - Updated to include delivery data
 - Udiff format not suported
 """
+
+
+class Row(NamedTuple):
+    Index: str
+    SYMBOL: str
+    SERIES: str
+    OPEN: float
+    HIGH: float
+    LOW: float
+    CLOSE: float
+    TOTTRDQTY: int
+    TOTTRDVAL: float
+    TOTALTRADES: int
+
+
+@dataclass
+class BufferEntry:
+    lines: list[bytes] = field(default_factory=list)
+    sme: bool = False
+
 
 DIR = Path(__file__).parent
 config_file = DIR / "config.toml"
@@ -22,6 +45,8 @@ output_folder = Path(config["general"]["output_folder"]).expanduser()
 basePath = Path(config["general"]["bhav_folder"]).expanduser()
 DAILY = output_folder / "daily-with-isin"
 DELIVERY = Path(config["general"]["delivery_folder"]).expanduser()
+
+isin_symbol_map_file = output_folder / "isin_symbol_map.json"
 
 # Remove any pre-existing folder from previous run
 if DAILY.exists():
@@ -40,27 +65,36 @@ if not any(DAILY_NO_ISIN.iterdir()):
         f"Folder is empty: {DAILY_NO_ISIN.name}. Run collate_no_isin.py "
     )
 
+print(f"Copying files from {DAILY_NO_ISIN} to {DAILY}")
 shutil.copytree(DAILY_NO_ISIN, DAILY, dirs_exist_ok=False)
+print("Copy operation complete")
 
 
-headerText = (
-    b"Date,Open,High,Low,Close,Volume,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
-)
-
-# EDIT BELOW - which ever date you start, one day prior
 dt = config["collate"]["with_isin"]["start_date"]
 
-# Dont change BELOW - post this date bhav copies are in udiff format
 end_date = config["collate"]["with_isin"]["end_date"]
 
 # EDIT THIS TO FIRST BHAVCOPY YOU HAVE
 isin = pd.read_csv(basePath / "2011/cm22JUN2011bhav.csv", index_col="ISIN")
 
-isin = isin[isin["SERIES"].isin(["EQ", "BE", "BZ", "SM", "ST"])]
+
+priority = dict(EQ=1, BE=2, BZ=3, SM=4, ST=5)
+
+
+isin = isin[
+    isin["SERIES"].isin(priority)
+    & ~isin.SYMBOL.str.contains(r"-RE\d*$", na=False, regex=True)
+]
 
 print("isin", isin.shape)
 
-while dt <= end_date:
+tracker = SymbolTracker()
+
+
+buffers = defaultdict(BufferEntry)
+
+
+while dt < end_date:
     dt = dt + timedelta(1)
 
     dt_str = dt.strftime("%d%b%Y").upper()
@@ -72,7 +106,16 @@ while dt <= end_date:
 
     df = pd.read_csv(bhav_file, index_col="ISIN")
 
-    df = df[df["SERIES"].isin(["EQ", "BE", "BZ", "SM", "ST"])]
+    df = df[
+        df.SERIES.isin(priority)
+        & ~df.SYMBOL.str.contains(r"-RE\d*$", na=False, regex=True)
+    ]
+
+    df.loc[:, "rank"] = df.SERIES.map(priority)
+
+    df.sort_values("rank", inplace=True)
+
+    df = df[~df.index.duplicated(keep="first")]
 
     dlv_df = None
 
@@ -80,87 +123,102 @@ while dt <= end_date:
 
     if dlv_file.exists():
         dlv_df = pd.read_csv(dlv_file, index_col="SYMBOL")
-        dlv_df = dlv_df[dlv_df[" SERIES"].isin([" EQ", " BE", " BZ", " SM", " ST"])]
 
-    dup = None
+        # Remove trailing whitespace in column names and SERIES string
+        dlv_df.columns = dlv_df.columns.str.strip()
+        dlv_df.loc[:, "SERIES"] = dlv_df.SERIES.str.strip()
 
-    if df.index.has_duplicates:
-        dup = df.loc[df.index.duplicated(keep=False)]
+        # Keep only Equity and SME series
+        dlv_df = dlv_df[dlv_df.SERIES.isin(priority)]
 
-        dup = dup.loc[dup["SERIES"] == "EQ"]
+        # assign rank based on series priority and sort by rank,
+        dlv_df.loc[:, "rank"] = dlv_df.SERIES.map(priority)
+
+        # keep only the first value to remove duplicate rows.
+        dlv_df = dlv_df.sort_values("rank")
+
+        dlv_df = dlv_df[~dlv_df.index.duplicated(keep="first")]
 
     pandas_dt = dt.strftime("%Y-%m-%d")
+    rows = cast(Iterable[Row], df.itertuples())
 
-    for idx in df.index:
-        sym, series = df.loc[idx, ["SYMBOL", "SERIES"]]
+    for row in rows:
+        sym = row.SYMBOL
+        idx = row.Index
 
-        if "-RE" in sym:
-            continue
-
-        prefix = ""
-
-        if isinstance(series, pd.Series):
-            if series.str.contains("SM|ST").any():
-                prefix = "_sme"
-        else:
-            if series == "SM" or series == "ST":
-                prefix = "_sme"
-
-        sym_file = DAILY / f"{sym.lower()}{prefix}.csv"
+        is_sme = row.SERIES == "SM" or row.SERIES == "ST"
 
         if idx not in isin.index:
             isin.at[idx, "SYMBOL"] = sym
         elif sym != isin.at[idx, "SYMBOL"]:
             old = isin.at[idx, "SYMBOL"]
             isin.at[idx, "SYMBOL"] = sym
-            old_file = DAILY / f"{old.lower()}{prefix}.csv"
-            sym_file = old_file.rename(DAILY / f"{sym.lower()}{prefix}.csv")
+
+            if sym in buffers:
+                raise ValueError(f"New symbol {sym} already in buffer.")
+
+            if old in buffers:
+                buffers[sym] = buffers.pop(old)
 
             print(old, sym, dt)
 
-        txt = b""
-
-        if dup is not None and idx in dup.index:
-            O, H, L, C, V, series = dup.loc[
-                idx, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "SERIES"]
-            ]
-        else:
-            O, H, L, C, V, series = df.loc[
-                idx, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "SERIES"]
-            ]
+        tracker.update(sym, idx, dt)
 
         if dlv_df is not None:
             if sym in dlv_df.index:
-                trdCnt, dq = dlv_df.loc[sym, [" NO_OF_TRADES", " DELIV_QTY"]]
+                trdCnt = dlv_df.at[sym, "NO_OF_TRADES"]
+                dq = dlv_df.at[sym, "DELIV_QTY"]
 
                 # BE and BZ series stocks are all delivery trades,
                 # so we use the volume
                 try:
-                    dq = V if series in ("BE", "BZ") else int(dq)
+                    dq = row.TOTTRDQTY if row.SERIES in ("BE", "BZ") else int(dq)
                 except ValueError:
-                    dq = np.nan
+                    dq = ""
             else:
-                trdCnt = dq = np.nan
+                trdCnt = dq = ""
 
-            avgTrdCnt = round(V / trdCnt, 2)
+            avgTrdCnt = "" if trdCnt == "" else round(row.TOTTRDQTY / trdCnt, 2)
         else:
             trdCnt = dq = avgTrdCnt = ""
 
-        if not sym_file.exists():
-            sme_file = DAILY / f"{sym.lower()}_sme.csv"
-
-            if prefix == "" and sme_file.exists():
-                sme_file.rename(sym_file)
-            else:
-                txt += headerText
-
-        txt += bytes(
-            f"{pandas_dt},{O},{H},{L},{C},{V},{series},{trdCnt},{avgTrdCnt},{dq}\n",
+        txt = bytes(
+            f"{pandas_dt},{row.OPEN},{row.HIGH},{row.LOW},{row.CLOSE},{row.TOTTRDQTY},{row.SERIES},{trdCnt},{avgTrdCnt},{dq}\n",
             encoding="utf-8",
         )
 
-        with sym_file.open("ab") as f:
-            f.write(txt)
+        buffers[sym].lines.append(txt)
+        buffers[sym].sme = is_sme
+
 
 print("isin", isin.shape)
 isin.to_csv(DAILY / "isin.csv")
+
+headerText = (
+    b"Date,Open,High,Low,Close,Volume,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY\n"
+)
+
+for symbol, entry in buffers.items():
+    filepath = DAILY / f"{symbol.lower()}.csv"
+    sme_filepath = filepath.with_stem(f"{symbol.lower()}_sme")
+
+    if filepath.exists() and sme_filepath.exists():
+        raise ValueError(
+            f"Both EQ and SME file coexist. {filepath.name} and {sme_filepath.name}"
+        )
+
+    if entry.sme:
+        target = sme_filepath
+    else:
+        if sme_filepath.exists():
+            sme_filepath.rename(filepath)
+        target = filepath
+
+    if target.exists():
+        with target.open("ab") as f:
+            f.write(b"".join(entry.lines))
+    else:
+        target.write_bytes(headerText + b"".join(entry.lines))
+
+
+isin_symbol_map_file.write_text(tracker.to_json())
