@@ -134,3 +134,4 @@ dmypy.json
 
 src/compiled-*.zip
 src/NSE-reports
+src/PR_ZIP
