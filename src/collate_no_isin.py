@@ -2,8 +2,22 @@ import shutil
 from datetime import timedelta
 from pathlib import Path
 import tomllib
+from typing import cast, Iterable, NamedTuple
+from collections import defaultdict
 
 import pandas as pd
+
+
+class Row(NamedTuple):
+    Index: str
+    SERIES: str
+    OPEN: float
+    HIGH: float
+    LOW: float
+    CLOSE: float
+    TOTTRDQTY: int
+    TOTTRDVAL: float
+
 
 DIR = Path(__file__).parent
 config_file = DIR / "config.toml"
@@ -28,12 +42,16 @@ headerText = (
 dt = config["collate"]["no_isin"]["start_date"]
 end_date = config["collate"]["no_isin"]["end_date"]
 
-while dt <= end_date:
+priority = dict(EQ=1, BE=2, BZ=3)
+
+buffers = defaultdict(list)
+
+while dt < end_date:
     dt = dt + timedelta(1)
 
     dt_str = dt.strftime("%d%b%Y").upper()
 
-    print(dt.strftime("%d-%b-%Y"), flush=True, end="\r" * 11)
+    print(dt.strftime("%d-%b-%Y"), flush=True, end="\r")
 
     bhav_file = BASE / f"{dt.year}/cm{dt_str}bhav.csv"
 
@@ -42,48 +60,31 @@ while dt <= end_date:
 
     df = pd.read_csv(bhav_file, index_col="SYMBOL")
 
-    df = df[df["SERIES"].isin(["EQ", "BE", "BZ", "SM", "ST"])]
+    df = df[df["SERIES"].isin(priority)]
 
-    dup = None
+    df.loc[:, "rank"] = df["SERIES"].map(priority)
 
-    if df.index.has_duplicates:
-        dup = df.loc[df.index.duplicated()]
+    df = df.sort_values("rank")
 
-        dup = dup.loc[dup["SERIES"] == "EQ"]
+    df = df[~df.index.duplicated(keep="first")]
 
     pandas_dt = dt.strftime("%Y-%m-%d")
 
-    for symbol in df.index:
-        series = df.at[symbol, "SERIES"]
+    rows = cast(Iterable[Row], df.itertuples())
 
-        prefix = ""
+    for row in rows:
+        sym_file = DAILY / f"{row.Index.lower()}.csv"
 
-        if isinstance(series, pd.Series):
-            if series.str.contains("SM|ST").any():
-                prefix = "_sme"
-        else:
-            if series == "SM" or series == "ST":
-                prefix = "_sme"
+        buffers[row.Index].append(
+            bytes(
+                f"{pandas_dt},{row.OPEN},{row.HIGH},{row.LOW},{row.CLOSE},{row.TOTTRDQTY},{row.SERIES},,,\n",
+                encoding="utf-8",
+            )
+        )
 
-        if dup is not None and symbol in dup.index:
-            O, H, L, C, V, series = dup.loc[
-                symbol, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "SERIES"]
-            ]
-        else:
-            O, H, L, C, V, series = df.loc[
-                symbol, ["OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "SERIES"]
-            ]
+for symbol, lines in buffers.items():
+    sym_file = DAILY / f"{symbol.lower()}.csv"
 
-        sym_file = DAILY / f"{symbol.lower()}{prefix}.csv"
-
-        txt = b""
-
-        if not sym_file.exists():
-            txt += headerText
-
-        txt += bytes(f"{pandas_dt},{O},{H},{L},{C},{V},{series},,,\n", encoding="utf-8")
-
-        with sym_file.open("ab") as f:
-            f.write(txt)
+    sym_file.write_bytes(headerText + b"".join(lines))
 
 print("complete")
