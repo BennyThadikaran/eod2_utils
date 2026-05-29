@@ -1,3 +1,23 @@
+"""
+This script builds a daily market breadth dataset from historical NSE
+bhavcopy and price data, then exports the consolidated metrics to a CSV
+file (market_tracker.csv).
+
+The generated dataset includes indicators such as:
+
+Percentage of stocks trading above their 50-day moving average
+Percentage of stocks trading above their 200-day moving average
+Cumulative net new 52-week highs vs lows
+Advance–decline line
+McClellan Oscillator
+Net advance ratio
+
+The script processes a broad historical universe of stocks, including
+delisted securities, to avoid survivorship bias and improve the accuracy
+and reliability of long-term breadth indicators.
+"""
+
+import tomllib
 import zipfile
 from pathlib import Path
 import pandas as pd
