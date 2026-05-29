@@ -11,11 +11,14 @@ output_folder = "~/Documents/python/eod2_utils/src/data"
 actions_folder = "~/Documents/python/eod2_utils/src/actions_json"
 actions_db = "~/Documents/python/eod2_utils/src/actions/db/main.db"
 
+# Avoid changing dates in collate
+# Udiff format started from 2024-07-08
 [collate.indices]
 start_date = 2012-02-19
 
-# Avoid changing dates in collate
-# Udiff format started from 2024-07-08
+[collate.market_breadth]
+start_date = 2024-02-01
+
 [collate.no_isin]
 start_date = 1994-12-31
 end_date = 2011-06-21
