@@ -84,15 +84,21 @@ def extract_pr_zip(zip_file) -> Optional[pd.DataFrame]:
 
 
 DIR = Path(__file__).parent
+config_path = DIR / "config.toml"
 
-DAILY = Path("~/Documents/python/eod2_utils/src/data/daily-with-udiff/").expanduser()
+with config_path.open("rb") as f:
+    config = tomllib.load(f)
+
+output_folder = Path(config["general"]["output_folder"]).expanduser()
+
+DAILY = output_folder / "daily-with-udiff"
 
 
-folder = Path("/home/benny/Documents/python/eod2_utils/src/PR_ZIP/")
+pr_zip_folder = Path(config["download"]["pr_bhav"]["output_folder"])
 
 priority = dict(EQ=1, BE=2, BZ=3)
 
-start_date = date(2024, 2, 1)
+start_date = config["collate"]["market_breadth"]["start_date"]
 end_date = date.today()
 cache = {}
 ad_ratios = []
@@ -106,10 +112,10 @@ fast_ema_len = 19
 prev_fast_ema = prev_slow_ema = None
 osc = fast_ema = slow_ema = None
 
-tracker = SymbolTracker(DIR / "data/isin_symbol_map.json")
+tracker = SymbolTracker(output_folder / "isin_symbol_map.json")
 
 while start_date <= end_date:
-    zip_file = folder / f"PR{start_date:%d%m%y}.zip"
+    zip_file = pr_zip_folder / f"PR{start_date:%d%m%y}.zip"
 
     print(start_date.strftime("%d-%b-%Y"))
 
@@ -237,4 +243,4 @@ while start_date <= end_date:
 
 df = pd.DataFrame(results)
 df.sort_values("Date", inplace=True)
-df.to_csv(DIR / "market_tracker.csv", index=False)
+df.to_csv(output_folder / "market_tracker.csv", index=False)
