@@ -116,7 +116,11 @@ Steps 1-8 in the compile process must be completed to proceed.
 
 4. Update the `actions/meta.json` with the last updated date.
 
-## Steps to compile dataset with delisted stocks (to avoid survivorship bias)
+## Building a Survivorship-Bias-Free Dataset
+
+> **Survivorship bias** happens when you only look at stocks that are still listed today and
+> ignore the ones that were delisted. This can make past performance look better than it
+> really was, because the “failed” stocks are missing from the data.
 
 **Before you start,**
 
