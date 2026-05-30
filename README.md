@@ -118,7 +118,44 @@ Steps 1 to 8 in the compile process must to be completed to proceed.
 
 4. Update the `actions/meta.json` with the last updated date.
 
-## TODO
+## Steps to compile dataset with delisted stocks (to avoid survivorship bias)
 
-- Add other scripts for EOD2 maintainence.
-- ~~Add a script to sync `daily-with-udiff` folder to the latest, without having to build the folder from scratch.~~
+**Before you start,**
+
+- Ensure the output_folder exists. config.toml - `general.output_folder`.
+- Ensure the PR bhavcopy folder exists and contains all PR bhavcopies. config.toml - `download.pr_bhav.output_folder`.
+- PR Bhavcopies upto 29th May 2026 are available in the releases section of this repo.
+- You can also run `download_pr_bhav.py` to sync upto the latest date.
+
+**Step 1:** Follow all steps from 1 - 8 of [Steps to compile EOD2](#steps-to-compile-eod2). **Dont run cleanup.py**.
+
+**Step 2:** Run `process_pr_zip_actions.py`.
+
+    - It will output a `final.csv` in the output folder.
+    - This contains corporate actions for all stocks (including delisted) from 2011 onwards
+
+**Step 3:** Run `apply_adjustments_from_csv.py`.
+
+    - It will apply the adjustments from final.csv to the CSV files in `daily-with-udiff`
+
+The resulting dataset can now be used to run `collate_market_breadth.py` to collate indicators from scratch.
+
+**Notes:**
+
+The corporate actions file in PR bhav zip required extensive cleanup and normalizing to make it parsable.
+
+In rare cases, the purpose string was terminated midway. This required manually hardcoding the purpose text (acquired from NSE website) to correct the problem.
+
+The scripts `extract_pr_actions_a1.py`, `normalize_action_text_a2.py`, and `build_final_actions_csv_a3.py` correspond to individual stages of the workflow implemented by `process_pr_zip_actions.py`. They are intended mainly for debugging, testing, and development; most users should use `process_pr_zip_actions.py`.
+
+## SymbolTracker
+
+See [SymbolTracker usage](symbol-tracker-usage.md)
+
+## Releases
+
+[2025-Master](https://github.com/BennyThadikaran/eod2_utils/releases/tag/2025-master) - Contains all equity, delivery, and indices bhavcopy from 1995 onwards.
+
+[PR-Bhav-Master](https://github.com/BennyThadikaran/eod2_utils/releases/tag/pr-bhav-master) - Contains all PR Bhav copies from 2011 to 2025.
+
+Going forward, all reports for a calendar year will be bundled into a single GitHub release published at the beginning of the following year.
