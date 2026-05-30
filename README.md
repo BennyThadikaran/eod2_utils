@@ -8,10 +8,10 @@ Python >= 3.11
 
 config.toml uses [toml format](https://toml.io/en/)
 
-This file defines the folder locations used by the application to read NSE market data and store processed outputs.
+This file defines folder locations used to read NSE market data and store processed outputs.
 
 - **`bhav_folder`**
-  Path to NSE **Bhav Copy** reports, organized into folders by year.
+  Path to NSE **Bhavcopy** reports, organized into folders by year.
 
 - **`delivery_folder`**
   Path to NSE **Delivery Reports**, organized into folders by year.
@@ -32,13 +32,11 @@ This file defines the folder locations used by the application to read NSE marke
 
 ## Steps to compile EOD2
 
-The entire process from scratch can take a few hours to complete.
-
 Make sure all corporate actions are up-to-date. (See [Sync Corporate actions](#sync-corporate-actions))
 
 1. Update the config.toml with the necessary file / folder paths. Leave the dates as is.
 
-2. Organize all NSE reports (Bhav Copy, Delivery, and Indices) into their respective folders as defined in `config.toml`. Each report type must be further organized into subfolders by year, including the current year where applicable.
+2. Organize all NSE reports (Bhavcopy, Delivery, and Indices) into their respective folders as defined in `config.toml`. Each report type must be further organized into subfolders by year, including the current year where applicable.
 
 3. Run `collate_no_isin.py` and `collate_indices.py`
 
@@ -46,10 +44,10 @@ Make sure all corporate actions are up-to-date. (See [Sync Corporate actions](#s
 
 5. Run `collate_udiff_bhav.py`.
 
-6. collate_indices.py and collate_udiff_bhav.py will generate a `meta-collate.json` file in the output folder. **Preserve this for future use.**
+6. collate_indices.py and collate_udiff_bhav.py generate a `meta-collate.json` file in the output folder. **Preserve this for future use.**
 
 7. Take a compressed backup (zip) of compiled folders and `meta-collate.json` for future use.
-   - In the future, the compiled data can be reused to avoid re-compiling entire data from scratch.
+   - In the future, the compiled data can be reused to avoid recompiling everything from scratch.
    - `meta-collate.json` is critical for reusing the compiled data in future.
    - Reusing the compiled data, allows completing the entire process in minutes.
 
@@ -108,7 +106,7 @@ For most cases, run `actions/init.py` to sync the actions database to latest dat
 
 It is preferred to run this on a weekend during midnight hours.
 
-Steps 1 to 8 in the compile process must to be completed to proceed.
+Steps 1-8 in the compile process must be completed to proceed.
 
 1. Delete existing `db/main.db`. Run `sqlite3 main.db < create.sql` in `actions/db` folder to generate SQLITE database.
 
@@ -127,12 +125,12 @@ Steps 1 to 8 in the compile process must to be completed to proceed.
 - PR Bhavcopies upto 29th May 2026 are available in the releases section of this repo.
 - You can also run `download_pr_bhav.py` to sync upto the latest date.
 
-**Step 1:** Follow all steps from 1 - 8 of [Steps to compile EOD2](#steps-to-compile-eod2). **Dont run cleanup.py**.
+**Step 1:** Follow all steps from 1-8 of [Steps to compile EOD2](#steps-to-compile-eod2). **Don't run `cleanup.py`.**.
 
 **Step 2:** Run `process_pr_zip_actions.py`.
 
     - It will output a `final.csv` in the output folder.
-    - This contains corporate actions for all stocks (including delisted) from 2011 onwards
+    - `final.csv` contains corporate actions for all stocks (including delisted stocks) from 2011 onward.
 
 **Step 3:** Run `apply_adjustments_from_csv.py`.
 
@@ -142,7 +140,7 @@ The resulting dataset can now be used to run `collate_market_breadth.py` to coll
 
 **Notes:**
 
-The corporate actions file in PR bhav zip required extensive cleanup and normalizing to make it parsable.
+The corporate actions data contained in the PR bhavcopy ZIP files required extensive cleanup and normalization before it could be parsed reliably.
 
 In rare cases, the purpose string was terminated midway. This required manually hardcoding the purpose text (acquired from NSE website) to correct the problem.
 
@@ -156,6 +154,6 @@ See [SymbolTracker usage](symbol-tracker-usage.md)
 
 [2025-Master](https://github.com/BennyThadikaran/eod2_utils/releases/tag/2025-master) - Contains all equity, delivery, and indices bhavcopy from 1995 onwards.
 
-[PR-Bhav-Master](https://github.com/BennyThadikaran/eod2_utils/releases/tag/pr-bhav-master) - Contains all PR Bhav copies from 2011 to 2025.
+[PR-Bhav-Master](https://github.com/BennyThadikaran/eod2_utils/releases/tag/pr-bhav-master) - Contains all PR Bhavcopies from 2011 to 2025.
 
 Going forward, all reports for a calendar year will be bundled into a single GitHub release published at the beginning of the following year.
