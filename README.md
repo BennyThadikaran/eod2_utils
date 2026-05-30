@@ -34,7 +34,7 @@ This file defines the folder locations used by the application to read NSE marke
 
 The entire process from scratch can take a few hours to complete.
 
-Make sure all corporate actions are up-to-date. (See #sync-corporate-actions)
+Make sure all corporate actions are up-to-date. (See [Sync Corporate actions](#sync-corporate-actions))
 
 1. Update the config.toml with the necessary file / folder paths. Leave the dates as is.
 
