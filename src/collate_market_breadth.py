@@ -114,7 +114,7 @@ output_folder = Path(config["general"]["output_folder"]).expanduser()
 DAILY = output_folder / "daily-with-udiff"
 
 
-pr_zip_folder = Path(config["download"]["pr_bhav"]["output_folder"])
+pr_zip_folder = Path(config["download"]["pr_bhav"]["output_folder"]).expanduser()
 
 priority = dict(EQ=1, BE=2, BZ=3)
 
